@@ -8,9 +8,23 @@ import {
   ArrowRight,
   Zap,
 } from "lucide-react";
+import ShareButton from "@/components/share-button";
 
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: Props) {
+  const { id } = await params;
+
+  const doc = await adminDb.collection("audits").doc(id).get();
+
+  const data = doc.data();
+
+  return {
+    title: `Save $${data?.totalSavings || 0}/month on AI tools`,
+    description: "AI spend optimization report",
+  };
 }
 
 export default async function AuditPage({ params }: Props) {
@@ -98,6 +112,9 @@ export default async function AuditPage({ params }: Props) {
                 ${(data.totalSavings * 12).toLocaleString()}
               </p>
             </div>
+            <div className="mt-6">
+              <ShareButton />
+            </div>
           </div>
         </div>
 
@@ -170,7 +187,18 @@ export default async function AuditPage({ params }: Props) {
             optimized={totalOptimizedSpend}
           />
         </div>
+        {/* ── AI SUMMARY ───────────────────────── */}
+        <div className="mt-12 bg-gradient-to-br from-zinc-900/80 to-zinc-800/40 border border-zinc-800 rounded-3xl p-8">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
 
+            <h2 className="text-2xl font-bold tracking-tight">AI Summary</h2>
+          </div>
+
+          <p className="text-zinc-300 text-base leading-relaxed mt-6 whitespace-pre-line">
+            {data.aiSummary}
+          </p>
+        </div>
         {/* ── RECOMMENDATIONS ──────────────────── */}
         <div className="mt-12">
           <div className="mb-7">

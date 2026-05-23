@@ -61,7 +61,7 @@ export default function SavingsChart({
         ].map((s) => (
           <div
             key={s.label}
-            className="flex-1 min-w-[120px] bg-zinc-800/60 rounded-2xl px-5 py-4 border border-zinc-700/50"
+            className="flex-1 min-w-30 bg-zinc-800/60 rounded-2xl px-5 py-4 border border-zinc-700/50"
           >
             <p className="text-zinc-500 text-xs uppercase tracking-widest">
               {s.label}
@@ -76,7 +76,7 @@ export default function SavingsChart({
       </div>
 
       {/* Chart */}
-      <div className="h-[260px] w-full">
+      <div className="h-65 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} barSize={72} barGap={24}>
             <XAxis
