@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
+import AuditLoading from "@/components/audit-loading";
 import { toolsData } from "@/data/tools";
 import { calculatePrice } from "@/lib/calculate-price";
 
@@ -22,6 +22,14 @@ interface Tool {
   useCase: string;
 }
 
+interface Lead {
+  email: string;
+  company: string;
+  role: string;
+  teamSize: string;
+  website: string;
+}
+
 const defaultTool: Tool = {
   tool: "",
   plan: "",
@@ -31,37 +39,52 @@ const defaultTool: Tool = {
 };
 
 const inputClass =
-  "w-full bg-[#1a1d24] rounded-xl px-4 py-3 border border-[#2a2d36] text-zinc-100 placeholder-zinc-600 outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition text-sm";
+  "w-full bg-[#1a1d24] rounded-xl px-4 py-3 border border-[#2a2d36] text-zinc-100 placeholder-zinc-300 outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition text-sm";
 
 const labelClass =
   "block mb-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.1em]";
 
-// Shared classes injected into shadcn Select primitives to force dark theme
 const triggerClass =
-  "w-full h-11 rounded-xl border border-[#2a2d36] bg-[#1a1d24] text-sm text-zinc-100 px-3 focus:ring-1 focus:ring-zinc-500 focus:border-zinc-500 data-[placeholder]:text-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed";
+  "w-full h-11 rounded-xl border border-[#2a2d36] bg-[#1a1d24] text-sm text-zinc-100 px-3 focus:ring-1 focus:ring-zinc-500";
 
 const contentClass =
-  "z-50 rounded-xl border border-[#2a2d36] bg-[#1a1d24] shadow-2xl shadow-black/60 text-zinc-100 overflow-hidden p-1";
+  "z-50 rounded-xl border border-[#2a2d36] bg-[#1a1d24] text-zinc-100 overflow-hidden p-1";
 
 const itemClass =
-  "relative flex cursor-pointer select-none items-center rounded-lg px-3 py-2.5 text-sm text-zinc-300 outline-none transition-colors hover:bg-[#252830] hover:text-white focus:bg-[#FFFFFF] focus:text-black data-[state=checked]:bg-[#FFFFFF] data-[state=checked]:text-black data-[disabled]:pointer-events-none data-[disabled]:opacity-40";
+  "relative flex cursor-pointer select-none items-center rounded-lg px-3 py-2.5 text-sm text-zinc-300 hover:bg-[#252830]";
 
 export default function AuditForm() {
   const router = useRouter();
+
   const [tools, setTools] = useState<Tool[]>([{ ...defaultTool }]);
+
+  const [lead, setLead] = useState<Lead>({
+    email: "",
+    company: "",
+    role: "",
+    teamSize: "",
+    website: "",
+  });
+
   const [loading, setLoading] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function updateToolFields(index: number, updates: Partial<Tool>) {
     setTools((prev) => {
-      const newTools = [...prev];
-      newTools[index] = { ...newTools[index], ...updates };
-      return newTools;
+      const next = [...prev];
+      next[index] = {
+        ...next[index],
+        ...updates,
+      };
+      return next;
     });
   }
 
   function updateTool(index: number, field: keyof Tool, value: string) {
-    updateToolFields(index, { [field]: value });
+    updateToolFields(index, {
+      [field]: value,
+    });
   }
 
   function addTool() {
@@ -72,40 +95,35 @@ export default function AuditForm() {
     setTools((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function validateForm(): boolean {
-    for (let i = 0; i < tools.length; i++) {
-      const tool = tools[i];
-      if (!tool.tool.trim()) {
-        alert(`Please select a tool for Tool #${i + 1}`);
-        return false;
-      }
-      if (!tool.plan.trim()) {
-        alert(`Please select a plan for ${tool.tool || `Tool #${i + 1}`}`);
-        return false;
-      }
-      if (!tool.monthlySpend || Number(tool.monthlySpend) <= 0) {
-        alert(
-          `Please enter valid monthly spend for ${tool.tool || `Tool #${i + 1}`}`,
-        );
-        return false;
-      }
-      if (!tool.seats || Number(tool.seats) <= 0) {
-        alert(
-          `Please enter valid number of seats for ${tool.tool || `Tool #${i + 1}`}`,
-        );
+  function validateForm() {
+    if (!lead.email.trim()) {
+      alert("Please enter work email");
+      return false;
+    }
+
+    for (const tool of tools) {
+      if (
+        !tool.tool ||
+        !tool.plan ||
+        Number(tool.monthlySpend) < 0 ||
+        Number(tool.seats) <= 0
+      ) {
+        alert("Please complete all tool fields");
         return false;
       }
     }
+
     return true;
   }
 
   async function handleSubmit() {
     if (loading || isSubmitting) return;
+
     if (!validateForm()) return;
 
     try {
-      setIsSubmitting(true);
       setLoading(true);
+      setIsSubmitting(true);
 
       const cleanedTools = tools.map((tool) => ({
         tool: tool.tool.trim(),
@@ -117,8 +135,13 @@ export default function AuditForm() {
 
       const res = await fetch("/api/audit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tools: cleanedTools }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          lead,
+          tools: cleanedTools,
+        }),
       });
 
       const data = await res.json();
@@ -126,38 +149,109 @@ export default function AuditForm() {
       if (data.success) {
         router.push(`/audit/${data.auditId}`);
       } else {
-        alert(data.message || "Failed to create audit");
-        setIsSubmitting(false);
+        alert(data.message || "Failed");
         setLoading(false);
+        setIsSubmitting(false);
       }
-    } catch (error) {
-      console.error("Submission error:", error);
-      alert("Something went wrong. Please try again.");
-      setIsSubmitting(false);
+    } catch {
+      alert("Something went wrong");
       setLoading(false);
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <div className="mt-10 space-y-4">
+    <>
+    {loading && <AuditLoading />}
+    <div className="mt-8 space-y-4">
+      <div className="bg-[#13151b] border border-[#22252f] rounded-2xl p-4 sm:p-6 space-y-4">
+        <h2 className="text-base sm:text-lg font-semibold text-zinc-100">
+          Get your audit report
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <input
+            placeholder="Work email"
+            value={lead.email}
+            onChange={(e) =>
+              setLead({
+                ...lead,
+                email: e.target.value,
+              })
+            }
+            className={inputClass}
+          />
+
+          <input
+            placeholder="Company"
+            value={lead.company}
+            onChange={(e) =>
+              setLead({
+                ...lead,
+                company: e.target.value,
+              })
+            }
+            className={inputClass}
+          />
+
+          <input
+            placeholder="Role"
+            value={lead.role}
+            onChange={(e) =>
+              setLead({
+                ...lead,
+                role: e.target.value,
+              })
+            }
+            className={inputClass}
+          />
+
+          <input
+            placeholder="Team size"
+            value={lead.teamSize}
+            onChange={(e) =>
+              setLead({
+                ...lead,
+                teamSize: e.target.value,
+              })
+            }
+            className={inputClass}
+          />
+
+          <input
+            type="text"
+            className="hidden"
+            value={lead.website}
+            onChange={(e) =>
+              setLead({
+                ...lead,
+                website: e.target.value,
+              })
+            }
+          />
+        </div>
+      </div>
+
       {tools.map((tool, index) => (
         <div
           key={index}
-          className="bg-[#13151b] border border-[#22252f] rounded-2xl overflow-hidden transition-colors hover:border-[#2e3140]"
+          className="bg-[#13151b] border border-[#22252f] rounded-2xl overflow-hidden"
         >
-          {/* ── Card header ── */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[#22252f] bg-[#0f1117]">
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-lg bg-[#1e2028] border border-[#2a2d36] flex items-center justify-center">
-                <Bot className="w-3.5 h-3.5 text-zinc-400" />
-              </div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-b border-[#22252f] bg-[#0f1117]">
+            <div className="flex flex-wrap items-center gap-2">
+              <Bot className="w-4 h-4 text-zinc-400" />
+
               <span className="text-sm font-semibold text-zinc-200">
                 {tool.tool || `Tool #${index + 1}`}
               </span>
+
               {tool.plan && (
                 <>
-                  <ChevronRight className="w-3.5 h-3.5 text-shadow-zinc-300" />
-                  <span className="text-sm text-zinc-500">{tool.plan}</span>
+                  <ChevronRight className="w-4 h-4 text-zinc-500" />
+
+                  <span className="text-xs sm:text-sm text-zinc-500">
+                    {tool.plan}
+                  </span>
                 </>
               )}
             </div>
@@ -166,33 +260,32 @@ export default function AuditForm() {
               <button
                 type="button"
                 onClick={() => removeTool(index)}
-                className="flex items-center gap-1.5 text-xs text-zinc-600 hover:text-red-400 transition px-2.5 py-1.5 rounded-lg hover:bg-red-500/8"
+                className="self-start sm:self-auto text-zinc-500 hover:text-red-400"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                Remove
+                <Trash2 className="w-4 h-4" />
               </button>
             )}
           </div>
 
-          {/* ── Card body ── */}
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* AI Tool */}
+          <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className={labelClass}>AI Tool</label>
+
               <Select
                 value={tool.tool}
-                onValueChange={(value) => {
+                onValueChange={(value) =>
                   updateToolFields(index, {
                     tool: value,
                     plan: toolsData[value as keyof typeof toolsData][0],
                     seats: "",
                     monthlySpend: "",
-                  });
-                }}
+                  })
+                }
               >
                 <SelectTrigger className={triggerClass}>
                   <SelectValue placeholder="Select AI Tool" />
                 </SelectTrigger>
+
                 <SelectContent className={contentClass}>
                   {Object.keys(toolsData).map((toolName) => (
                     <SelectItem
@@ -207,23 +300,23 @@ export default function AuditForm() {
               </Select>
             </div>
 
-            {/* Current Plan */}
             <div>
               <label className={labelClass}>Current Plan</label>
+
               <Select
                 value={tool.plan}
-                onValueChange={(value) => {
+                onValueChange={(value) =>
                   updateToolFields(index, {
                     plan: value,
                     seats: "",
                     monthlySpend: "",
-                  });
-                }}
-                disabled={!tool.tool}
+                  })
+                }
               >
                 <SelectTrigger className={triggerClass}>
                   <SelectValue placeholder="Select Plan" />
                 </SelectTrigger>
+
                 <SelectContent className={contentClass}>
                   {tool.tool &&
                     toolsData[tool.tool as keyof typeof toolsData]?.map(
@@ -241,99 +334,82 @@ export default function AuditForm() {
               </Select>
             </div>
 
-            {/* Number of Seats */}
             <div>
               <label className={labelClass}>Number of Seats</label>
+
               <input
                 type="number"
-                placeholder="e.g. 5"
                 value={tool.seats}
                 onChange={(e) => {
                   const seats = e.target.value;
+
                   const price = calculatePrice(
                     tool.tool,
                     tool.plan,
                     Number(seats),
                   );
+
                   updateToolFields(index, {
                     seats,
                     monthlySpend: String(price),
                   });
                 }}
                 className={inputClass}
-                min="1"
-                step="1"
               />
             </div>
 
-            {/* Monthly Spend */}
             <div>
-              <label className={labelClass}>Monthly Spend (USD)</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm font-medium pointer-events-none">
-                  $
-                </span>
-                <input
-                  type="number"
-                  placeholder="100"
-                  value={tool.monthlySpend}
-                  onChange={(e) =>
-                    updateTool(index, "monthlySpend", e.target.value)
-                  }
-                  className={`${inputClass} pl-7`}
-                />
-              </div>
+              <label className={labelClass}>Monthly Spend</label>
+
+              <input
+                type="number"
+                value={tool.monthlySpend}
+                onChange={(e) =>
+                  updateTool(index, "monthlySpend", e.target.value)
+                }
+                className={inputClass}
+              />
             </div>
 
-            {/* Use Case — full width */}
             <div className="md:col-span-2">
-              <label className={labelClass}>
-                Primary Use Case{" "}
-                <span className="text-zinc-700 normal-case tracking-normal font-normal">
-                  (optional)
-                </span>
-              </label>
+              <label className={labelClass}>Primary Use Case</label>
+
               <textarea
-                placeholder="e.g. Coding assistant for 3 engineers, content writing for marketing team…"
+                rows={3}
                 value={tool.useCase}
                 onChange={(e) => updateTool(index, "useCase", e.target.value)}
-                className={`${inputClass} min-h-[80px] resize-none`}
-                rows={2}
+                className={`${inputClass} min-h-[90px] resize-none`}
               />
             </div>
           </div>
         </div>
       ))}
 
-      {/* Add tool */}
       <button
         type="button"
         onClick={addTool}
-        className="flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-200 border border-dashed border-[#22252f] hover:border-[#3a3d4a] transition px-5 py-3.5 rounded-2xl w-full justify-center hover:bg-[#13151b]"
+        className="w-full flex items-center justify-center gap-2 text-sm text-zinc-400 hover:text-white border border-dashed border-[#22252f] px-4 py-3 rounded-2xl"
       >
         <Plus className="w-4 h-4" />
         Add Another Tool
       </button>
 
-      {/* Submit */}
       <button
         type="button"
         onClick={handleSubmit}
         disabled={loading || isSubmitting}
-        className="w-full bg-white text-[#0f1117] py-4 rounded-2xl font-semibold text-base hover:bg-zinc-100 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 group mt-2"
+        className="w-full bg-white text-black py-4 rounded-2xl font-semibold flex items-center justify-center gap-2"
       >
-        {loading || isSubmitting ? (
-          <>
-            <span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
-            Generating your audit…
-          </>
+        {loading ? (
+          "Generating..."
         ) : (
           <>
-            <Sparkles className="w-4 h-4 opacity-60 group-hover:opacity-100 transition" />
+            <Sparkles className="w-4 h-4" />
             Run AI Spend Audit
           </>
         )}
       </button>
     </div>
+    </>
   );
 }

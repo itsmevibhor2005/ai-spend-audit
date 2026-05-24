@@ -1,17 +1,24 @@
 import { NextResponse } from "next/server";
 
 import { adminDb } from "@/lib/firebase-admin";
-
 import { generateAudit } from "@/lib/audit-engine";
-
 import { generateSummary } from "@/lib/generate-summary";
+import { sendAuditEmail } from "@/lib/send-audit-email";
 
 export async function POST(req: Request) {
   try {
-    // Parse Request Body
     const body = await req.json();
 
-    // Validate Request
+    if (body.lead?.website) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Spam blocked",
+        },
+        { status: 400 },
+      );
+    }
+
     if (!body.tools || !Array.isArray(body.tools) || body.tools.length === 0) {
       return NextResponse.json(
         {
@@ -22,19 +29,42 @@ export async function POST(req: Request) {
       );
     }
 
-    // Generate Recommendations
+    if (!body.lead?.email?.trim()) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Email is required",
+        },
+        { status: 400 },
+      );
+    }
+
+    for (const tool of body.tools) {
+      if (
+        !tool.tool ||
+        !tool.plan ||
+        tool.monthlySpend < 0 ||
+        tool.seats <= 0
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Invalid tool input",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     const recommendations = generateAudit(body.tools);
 
-    // Calculate Total Savings
     const totalSavings = recommendations.reduce(
       (acc, item) => acc + item.savings,
       0,
     );
 
-    // Generate AI Summary
     const aiSummary = await generateSummary(recommendations, totalSavings);
 
-    // Calculate Spend Totals
     const totalCurrentSpend = recommendations.reduce(
       (acc, item) => acc + item.currentCost,
       0,
@@ -45,8 +75,14 @@ export async function POST(req: Request) {
       0,
     );
 
-    // Create Audit Object
     const auditData = {
+      lead: {
+        email: body.lead.email || "",
+        company: body.lead.company || "",
+        role: body.lead.role || "",
+        teamSize: body.lead.teamSize || "",
+      },
+
       tools: body.tools,
 
       recommendations,
@@ -62,10 +98,14 @@ export async function POST(req: Request) {
       createdAt: new Date(),
     };
 
-    // Save To Firestore
     const docRef = await adminDb.collection("audits").add(auditData);
 
-    // Return Success Response
+    try {
+      await sendAuditEmail(body.lead.email, docRef.id, totalSavings, body.lead.company);
+    } catch (emailError) {
+      console.error("Email send failed:", emailError);
+    }
+
     return NextResponse.json({
       success: true,
 
@@ -81,7 +121,6 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         success: false,
-
         message: "Failed to generate audit",
       },
       { status: 500 },

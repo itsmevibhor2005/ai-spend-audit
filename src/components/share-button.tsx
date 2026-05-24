@@ -18,7 +18,7 @@ export default function ShareButton() {
   return (
     <button
       onClick={copyLink}
-      className="bg-zinc-800 hover:bg-zinc-700 transition px-5 py-3 rounded-2xl"
+      className="w-full sm:w-auto bg-zinc-800 hover:bg-zinc-700 transition px-4 sm:px-5 py-3 rounded-2xl text-sm font-medium"
     >
       {copied ? "Copied!" : "Copy Share Link"}
     </button>
