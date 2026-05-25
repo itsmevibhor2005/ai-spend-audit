@@ -7,8 +7,20 @@ import { sendAuditEmail } from "@/lib/send-audit-email";
 
 export async function POST(req: Request) {
   try {
+    // GitHub CI / build safety
+    if (!adminDb) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Database unavailable",
+        },
+        { status: 500 },
+      );
+    }
+
     const body = await req.json();
 
+    // honeypot spam protection
     if (body.lead?.website) {
       return NextResponse.json(
         {
@@ -19,6 +31,7 @@ export async function POST(req: Request) {
       );
     }
 
+    // require tools
     if (!body.tools || !Array.isArray(body.tools) || body.tools.length === 0) {
       return NextResponse.json(
         {
@@ -29,6 +42,7 @@ export async function POST(req: Request) {
       );
     }
 
+    // require email
     if (!body.lead?.email?.trim()) {
       return NextResponse.json(
         {
@@ -39,6 +53,7 @@ export async function POST(req: Request) {
       );
     }
 
+    // validate tools
     for (const tool of body.tools) {
       if (
         !tool.tool ||
@@ -56,14 +71,13 @@ export async function POST(req: Request) {
       }
     }
 
+    // audit engine
     const recommendations = generateAudit(body.tools);
 
     const totalSavings = recommendations.reduce(
       (acc, item) => acc + item.savings,
       0,
     );
-
-    const aiSummary = await generateSummary(recommendations, totalSavings);
 
     const totalCurrentSpend = recommendations.reduce(
       (acc, item) => acc + item.currentCost,
@@ -75,6 +89,18 @@ export async function POST(req: Request) {
       0,
     );
 
+    // AI summary
+    let aiSummary = "";
+
+    try {
+      aiSummary = await generateSummary(recommendations, totalSavings);
+    } catch (summaryError) {
+      console.error("Summary generation failed:", summaryError);
+
+      aiSummary = `We analyzed your AI stack and identified approximately $${totalSavings.toLocaleString()} in potential monthly savings across ${recommendations.length} tools. A few plan changes and vendor optimizations could reduce spend while keeping the same workflow.`;
+    }
+
+    // Firestore doc
     const auditData = {
       lead: {
         email: body.lead.email || "",
@@ -88,9 +114,7 @@ export async function POST(req: Request) {
       recommendations,
 
       totalSavings,
-
       totalCurrentSpend,
-
       totalOptimizedSpend,
 
       aiSummary,
@@ -100,8 +124,14 @@ export async function POST(req: Request) {
 
     const docRef = await adminDb.collection("audits").add(auditData);
 
+    // transactional email
     try {
-      await sendAuditEmail(body.lead.email, docRef.id, totalSavings, body.lead.company);
+      await sendAuditEmail(
+        body.lead.email,
+        docRef.id,
+        totalSavings,
+        body.lead.company,
+      );
     } catch (emailError) {
       console.error("Email send failed:", emailError);
     }

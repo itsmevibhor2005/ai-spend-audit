@@ -29,6 +29,9 @@ interface Props {
 
 export async function generateMetadata({ params }: Props) {
   const { id } = await params;
+  if (!adminDb) {
+    return null;
+  }
 
   const doc = await adminDb.collection("audits").doc(id).get();
 
@@ -42,7 +45,9 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function AuditPage({ params }: Props) {
   const { id } = await params;
-
+  if (!adminDb) {
+    return null;
+  }
   const doc = await adminDb.collection("audits").doc(id).get();
 
   const data = doc.data();
