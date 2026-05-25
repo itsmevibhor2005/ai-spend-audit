@@ -259,12 +259,16 @@
   - email
   - sharing
   - benchmark
+- Testing using Jest
+  - Test file creation
+  - Github Workflow CI integration
 
 ### What I learned
 
 - LLM APIs need graceful fallback.
 - End-to-end polish takes as much effort as building MVP.
 - Writing documentation forces better architecture thinking.
+- Testing the app through JEST and integrating Github Actions
 
 
 ### Overall progress
@@ -280,3 +284,4 @@ Benchmark mode
 Shareable audit pages  
 Responsive UI  
 Documentation
+Testing through Jest

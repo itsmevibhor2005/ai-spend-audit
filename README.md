@@ -11,7 +11,7 @@ Users receive an instant audit showing overspending, plan recommendations, estim
 - Savings recommendations
 - AI-generated summary
 - Benchmark mode
-- Email capture + confirmation
+- Email capture + confirmation (check the spam folder for email)
 - Shareable result URL
 - PDF export
 
