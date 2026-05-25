@@ -98,11 +98,7 @@ export default function SavingsChart({
 
       <div className="h-65 sm:h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={data}
-            barSize={window.innerWidth < 640 ? 48 : 72}
-            barGap={16}
-          >
+          <BarChart data={data} barSize={56} barGap={16}>
             <XAxis
               dataKey="name"
               axisLine={false}
