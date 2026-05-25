@@ -1,45 +1,55 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function sendAuditEmail(
   email: string,
   auditId: string,
   totalSavings: number,
   company?: string,
 ) {
+  const apiKey = process.env.RESEND_API_KEY;
+
+  // CI / local safety
+  if (!apiKey) {
+    console.warn("RESEND_API_KEY missing, skipping email");
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  const auditUrl = `${appUrl}/audit/${auditId}`;
+
   await resend.emails.send({
     from: "AI Spend Audit <onboarding@resend.dev>",
 
     to: email,
 
-    subject: `${company || "Your company"} AI Spend Audit is Ready`,
+    subject: company
+      ? `${company} AI spend audit is ready`
+      : "Your AI spend audit is ready",
 
     html: `
-      <div style="font-family:sans-serif;max-width:600px;margin:auto;line-height:1.6;">
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;">
         <h2>
-          ${company || "Your company"} AI Spend Audit is Ready
+          ${company ? `${company} AI Spend Audit` : "AI Spend Audit"}
         </h2>
 
         <p>
-          We analyzed your AI tooling and identified
-          <strong> $${totalSavings} </strong>
-          in estimated monthly savings.
+          Your audit is ready.
         </p>
 
         <p>
-          Your report:
+          Estimated monthly savings:
+          <strong>
+            $${totalSavings.toLocaleString()}
+          </strong>
         </p>
 
-        <a
-          href="${process.env.NEXT_PUBLIC_APP_URL}/audit/${auditId}"
-          style="display:inline-block;padding:12px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none;"
-        >
-          View Audit Report
-        </a>
-
-        <p style="margin-top:24px;color:#666;">
-          Generated for ${company || "your company"}.
+        <p>
+          <a href="${auditUrl}">
+            View audit report
+          </a>
         </p>
       </div>
     `,
