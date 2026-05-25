@@ -35,7 +35,7 @@ function getCheapestPlan(
   if (!plans) return null;
   let cheapestPlan = "";
   let cheapestPrice = Infinity;
-  for (const [planLower, { originalName, price }] of plans.entries()) {
+  for (const [, { originalName, price }] of plans.entries()) {
     if (price < cheapestPrice) {
       cheapestPrice = price;
       cheapestPlan = originalName;
@@ -76,7 +76,7 @@ function getEnterpriseOrBusinessPlan(toolInput: string): PlanInfo | null {
   let bestPlan: PlanInfo | null = null;
   let bestPrice = Infinity;
 
-  for (const [_, planInfo] of plans.entries()) {
+  for (const [, planInfo] of plans.entries()) {
     const planNameLower = planInfo.originalName.toLowerCase();
     if (
       (planNameLower === "enterprise" || planNameLower === "business") &&

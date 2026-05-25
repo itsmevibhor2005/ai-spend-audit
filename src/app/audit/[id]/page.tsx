@@ -11,6 +11,17 @@ import {
   Zap,
 } from "lucide-react";
 import ShareButton from "@/components/share-button";
+import { Recommendation } from "@/types/audit";
+
+type AuditDoc = {
+  totalSavings: number;
+  aiSummary: string;
+  recommendations: Recommendation[];
+  lead?: {
+    company?: string;
+    teamSize?: string | number;
+  };
+};
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -21,7 +32,7 @@ export async function generateMetadata({ params }: Props) {
 
   const doc = await adminDb.collection("audits").doc(id).get();
 
-  const data = doc.data();
+ const data = doc.data() as AuditDoc | undefined;
 
   return {
     title: `Save $${data?.totalSavings || 0}/month on AI tools`,
@@ -55,12 +66,12 @@ export default async function AuditPage({ params }: Props) {
   }
 
   const totalCurrentSpend = data.recommendations.reduce(
-    (acc: number, rec: any) => acc + rec.currentCost,
+    (acc: number, rec: Recommendation) => acc + rec.currentCost,
     0,
   );
 
   const totalOptimizedSpend = data.recommendations.reduce(
-    (acc: number, rec: any) => acc + rec.optimizedCost,
+    (acc: number, rec: Recommendation) => acc + rec.optimizedCost,
     0,
   );
 
@@ -76,7 +87,10 @@ export default async function AuditPage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
-      <div id="audit-report" className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+      <div
+        id="audit-report"
+        className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14"
+      >
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1">
             <div className="inline-flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-medium text-zinc-400 uppercase">
@@ -258,7 +272,7 @@ export default async function AuditPage({ params }: Props) {
         )}
 
         <div className="mt-10 space-y-5">
-          {data.recommendations.map((rec: any, index: number) => {
+          {data.recommendations.map((rec: Recommendation, index: number) => {
             const severity = getSeverity(rec.savings);
 
             return (

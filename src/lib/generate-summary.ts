@@ -1,9 +1,9 @@
 import { model } from "./gemini";
-
 import { pricingData } from "@/data/pricing";
+import { Recommendation } from "@/types/audit";
 
 export async function generateSummary(
-  recommendations: any[],
+  recommendations: Recommendation[],
   totalSavings: number,
 ) {
   const availablePlans = pricingData
@@ -40,25 +40,7 @@ Current AI tool ecosystem and available plans: ${availablePlans}
 Optimization opportunities identified: ${currentRecommendations}
 
 YOUR TASK:
-Write a one-paragraph executive summary (max 120 words) that a founder would want to forward to their leadership team.
-
-STYLE GUIDELINES:
-- Be direct and strategic, not technical
-- Use active, confident language ("We identified", "We can unlock", "Recommend consolidating")
-- Frame savings in terms of runway or reallocation ("Frees up $X for engineering")
-- Call out specific inefficiencies (duplicate seats, underutilized enterprise tiers, overlapping tools)
-- Lead with the most impactful insight
-- Close with a clear next-step or recommendation
-
-TONE:
-Confident, data-driven, action-oriented. Like a trusted advisor who respects the founder's time and intelligence.
-
-EXAMPLES OF PHRASING TO EMULATE:
-❌ "You might want to consider reducing some costs"
-✅ "We've found $12,400 in annual waste from duplicate AI assistants"
-
-❌ "There are some opportunities for optimization"
-✅ "Right-size your AI spend: downgrade 3 underutilized Pro plans and consolidate 2 redundant tools"
+Write a one-paragraph executive summary (max 120 words).
 
 Now generate the summary:
 `;

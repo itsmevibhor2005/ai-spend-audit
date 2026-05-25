@@ -10,7 +10,15 @@ import {
   Cell,
 } from "recharts";
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+type TooltipProps = {
+  active?: boolean;
+  payload?: {
+    value: number;
+  }[];
+  label?: string;
+};
+
+const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-zinc-900 border border-zinc-700 rounded-xl px-3 sm:px-4 py-3 shadow-xl">
@@ -117,7 +125,7 @@ export default function SavingsChart({
                 fill: "#52525b",
                 fontSize: 11,
               }}
-              tickFormatter={(v) => `$${v.toLocaleString()}`}
+              tickFormatter={(v) => `$${Number(v).toLocaleString()}`}
               width={56}
             />
 
