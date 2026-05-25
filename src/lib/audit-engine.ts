@@ -56,6 +56,8 @@ function getHigherTierPlan(
     claude: ["pro", "team", "enterprise"],
     cursor: ["pro", "business", "enterprise"],
     "github copilot": ["individual", "business", "enterprise"],
+    windsurf: ["free", "pro"],
+    v0: ["free", "premium"],
   };
   const toolLower = toolInput.toLowerCase();
   const order = tierOrder[toolLower];
@@ -181,6 +183,26 @@ export function generateAudit(tools: ToolInput[]): Recommendation[] {
             upgradeReason = `For ${seats} users, Claude Team provides shared billing and priority support.`;
           }
           break;
+        case "windsurf":
+          if (currentPlanInput.toLowerCase() === "pro" && seats <= 2) {
+            canDowngrade = true;
+            downgradeReason = `Small team (${seats} seats) can use Free plan for basic features.`;
+          }
+          if (currentPlanInput.toLowerCase() === "free" && seats >= 3) {
+            canUpgrade = true;
+            upgradeReason = `With ${seats} users, Pro plan offers unlimited completions and premium features.`;
+          }
+          break;
+        case "v0":
+          if (currentPlanInput.toLowerCase() === "premium" && seats <= 2) {
+            canDowngrade = true;
+            downgradeReason = `Small team (${seats} seats) may not need Premium features.`;
+          }
+          if (currentPlanInput.toLowerCase() === "free" && seats >= 3) {
+            canUpgrade = true;
+            upgradeReason = `For ${seats} users, Premium plan provides higher limits and advanced components.`;
+          }
+          break;
         case "github copilot":
         case "gemini":
           break;
@@ -215,6 +237,12 @@ export function generateAudit(tools: ToolInput[]): Recommendation[] {
 
     if (!correctPricePerSeat) {
       reason = `Plan "${currentPlanInput}" not found for tool "${toolKey}". Using your current plan as is.`;
+      optimizedCost = monthlySpend;
+    }
+
+    // Special logic for Free plan optimization
+    if (correctPricePerSeat === 0 && seats > 0) {
+      reason = `Using Free plan for ${seats} seat(s). No cost optimization needed.`;
       optimizedCost = monthlySpend;
     }
 

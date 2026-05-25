@@ -133,7 +133,7 @@ export const pricingData = [
   {
     tool: "Windsurf",
     plan: "Pro",
-    pricePerSeat: 15,
+    pricePerSeat: 20,
     category: "IDE",
   },
 
@@ -146,7 +146,7 @@ export const pricingData = [
   {
     tool: "v0",
     plan: "Premium",
-    pricePerSeat: 20,
+    pricePerSeat: 30,
     category: "Builder",
   },
 ];
