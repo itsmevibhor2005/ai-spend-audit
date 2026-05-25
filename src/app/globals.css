@@ -129,3 +129,30 @@
   }
 }
 
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  button {
+    display: none !important;
+  }
+
+  #audit-report {
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 20px !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  a {
+    color: black !important;
+    text-decoration: none;
+  }
+
+  * {
+    box-shadow: none !important;
+  }
+}

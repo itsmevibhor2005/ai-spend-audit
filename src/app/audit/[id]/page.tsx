@@ -1,6 +1,8 @@
 import { adminDb } from "@/lib/firebase-admin";
 import { getSeverity } from "@/lib/get-severity";
 import SavingsChart from "@/components/savings-charts";
+import { getBenchmark } from "@/lib/benchmark";
+import PdfButton from "@/components/pdf-button";
 import {
   TrendingDown,
   DollarSign,
@@ -67,9 +69,14 @@ export default async function AuditPage({ params }: Props) {
       ? Math.round((data.totalSavings / totalCurrentSpend) * 100)
       : 0;
 
+  const benchmark = getBenchmark(
+    totalCurrentSpend,
+    Number(data.lead?.teamSize || 1),
+  );
+
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+      <div id="audit-report" className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1">
             <div className="inline-flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-medium text-zinc-400 uppercase">
@@ -119,8 +126,9 @@ export default async function AuditPage({ params }: Props) {
               </p>
             </div>
 
-            <div className="mt-5">
+            <div className="mt-5 flex flex-col items-center justify-center lg:justify-start gap-4">
               <ShareButton />
+              <PdfButton />
             </div>
           </div>
         </div>
@@ -179,6 +187,45 @@ export default async function AuditPage({ params }: Props) {
             current={totalCurrentSpend}
             optimized={totalOptimizedSpend}
           />
+        </div>
+        <div className="mt-8 bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-7">
+          <h2 className="text-xl font-semibold">Benchmark Mode</h2>
+
+          <p className="text-zinc-500 text-sm mt-2">
+            Compare against similar teams
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+            <div className="bg-zinc-800 rounded-2xl p-5">
+              <p className="text-zinc-500 text-xs uppercase">
+                Your Spend / Dev
+              </p>
+
+              <h3 className="text-2xl font-semibold mt-2">
+                ${benchmark.perDev}
+              </h3>
+            </div>
+
+            <div className="bg-zinc-800 rounded-2xl p-5">
+              <p className="text-zinc-500 text-xs uppercase">Average</p>
+
+              <h3 className="text-2xl font-semibold mt-2">
+                ${benchmark.average}
+              </h3>
+            </div>
+
+            <div className="bg-zinc-800 rounded-2xl p-5">
+              <p className="text-zinc-500 text-xs uppercase">Difference</p>
+
+              <h3
+                className={`text-xl sm:text-2xl font-semibold mt-2 ${
+                  benchmark.diffPct > 0 ? "text-amber-400" : "text-emerald-400"
+                }`}
+              >
+                {benchmark.label}
+              </h3>
+            </div>
+          </div>
         </div>
 
         <div className="mt-10 bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-8">

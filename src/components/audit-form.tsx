@@ -378,7 +378,7 @@ export default function AuditForm() {
                 rows={3}
                 value={tool.useCase}
                 onChange={(e) => updateTool(index, "useCase", e.target.value)}
-                className={`${inputClass} min-h-[90px] resize-none`}
+                className={`${inputClass} min-h-22.5 resize-none`}
               />
             </div>
           </div>
