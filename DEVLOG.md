@@ -226,7 +226,7 @@
 
 ---
 
-## Day 6 — 2026-05-25
+## Day 6 & 7 — 2026-05-25 - 2026-05-26 (started at night of Day 6)
 
 **Hours worked:** 6
 
@@ -273,7 +273,7 @@
 
 ### Overall progress
 
-By end of Day 6:
+By end of Day 7:
 
 Working MVP  
 Deployed publicly  
