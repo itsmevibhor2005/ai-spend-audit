@@ -52,9 +52,10 @@ function getHigherTierPlan(
   if (!plans) return null;
 
   const tierOrder: Record<string, string[]> = {
-    chatgpt: ["plus", "team"],
-    claude: ["pro", "team"],
-    cursor: ["pro", "business"],
+    chatgpt: ["plus", "team", "enterprise"],
+    claude: ["pro", "team", "enterprise"],
+    cursor: ["pro", "business", "enterprise"],
+    "github copilot": ["individual", "business", "enterprise"],
   };
   const toolLower = toolInput.toLowerCase();
   const order = tierOrder[toolLower];
@@ -66,8 +67,29 @@ function getHigherTierPlan(
   return plans.get(nextPlanLower) || null;
 }
 
+function getEnterpriseOrBusinessPlan(toolInput: string): PlanInfo | null {
+  const plans = getPlansForTool(toolInput);
+  if (!plans) return null;
+
+  let bestPlan: PlanInfo | null = null;
+  let bestPrice = Infinity;
+
+  for (const [_, planInfo] of plans.entries()) {
+    const planNameLower = planInfo.originalName.toLowerCase();
+    if (
+      (planNameLower === "enterprise" || planNameLower === "business") &&
+      planInfo.price < bestPrice
+    ) {
+      bestPrice = planInfo.price;
+      bestPlan = planInfo;
+    }
+  }
+  return bestPlan;
+}
+
 export function generateAudit(tools: ToolInput[]): Recommendation[] {
   const recommendations: Recommendation[] = [];
+  let hasEnterpriseRecommendation = false;
 
   for (const item of tools) {
     const toolKey = item.tool;
@@ -96,6 +118,22 @@ export function generateAudit(tools: ToolInput[]): Recommendation[] {
       } else if (monthlySpend < expectedCorrectSpend) {
         reason = `You're paying less than standard pricing ($${expectedCorrectSpend} expected). Great deal! No optimization needed.`;
         optimizedCost = monthlySpend;
+      }
+    }
+
+    const enterprisePlan = getEnterpriseOrBusinessPlan(toolKey);
+    if (
+      seats >= 20 &&
+      enterprisePlan &&
+      enterprisePlan.originalName.toLowerCase() !==
+        currentPlanInput.toLowerCase()
+    ) {
+      const enterpriseCost = enterprisePlan.price * seats;
+      if (enterpriseCost < optimizedCost) {
+        optimizedCost = enterpriseCost;
+        recommendedPlan = enterprisePlan.originalName;
+        reason = `For ${seats} seats, ${enterprisePlan.originalName} plan reduces cost from $${monthlySpend} to $${enterpriseCost}/month while providing team/enterprise features.`;
+        hasEnterpriseRecommendation = true;
       }
     }
 
@@ -148,42 +186,31 @@ export function generateAudit(tools: ToolInput[]): Recommendation[] {
           break;
       }
 
-      if (canDowngrade && cheapest && cheapest.price < correctPricePerSeat) {
-        const newCost = cheapest.price * seats;
-        if (newCost < optimizedCost) {
-          optimizedCost = newCost;
-          recommendedPlan = cheapest.plan;
-          reason =
-            downgradeReason +
-            ` Switch from ${currentPlanOriginal} to ${cheapest.plan} saves $${correctPricePerSeat - cheapest.price}/seat/month.`;
-        }
-      } else if (
-        canUpgrade &&
-        higherTier &&
-        higherTier.price > correctPricePerSeat
-      ) {
-        const newCost = higherTier.price * seats;
-        if (newCost <= monthlySpend * 1.2) {
-          optimizedCost = newCost;
-          recommendedPlan = higherTier.originalName;
-          reason =
-            upgradeReason +
-            ` Upgrade to ${higherTier.originalName} costs $${(higherTier.price - correctPricePerSeat) * seats}/month more but adds essential team features.`;
+      if (optimizedCost === monthlySpend) {
+        if (canDowngrade && cheapest && cheapest.price < correctPricePerSeat) {
+          const newCost = cheapest.price * seats;
+          if (newCost < optimizedCost) {
+            optimizedCost = newCost;
+            recommendedPlan = cheapest.plan;
+            reason =
+              downgradeReason +
+              ` Switch from ${currentPlanOriginal} to ${cheapest.plan} saves $${correctPricePerSeat - cheapest.price}/seat/month.`;
+          }
+        } else if (
+          canUpgrade &&
+          higherTier &&
+          higherTier.price > correctPricePerSeat
+        ) {
+          const newCost = higherTier.price * seats;
+          if (newCost <= monthlySpend * 1.2) {
+            optimizedCost = newCost;
+            recommendedPlan = higherTier.originalName;
+            reason =
+              upgradeReason +
+              ` Upgrade to ${higherTier.originalName} costs $${(higherTier.price - correctPricePerSeat) * seats}/month more but adds essential team features.`;
+          }
         }
       }
-    }
-
-    if (monthlySpend > 500 && optimizedCost === monthlySpend) {
-      optimizedCost = monthlySpend * 0.75;
-      reason = `High spend detected. Consider volume discounts or API migration.`;
-    }
-
-    if (seats >= 20 && currentPlanOriginal.toLowerCase() !== "enterprise") {
-      reason = `Consider enterprise pricing for ${seats} seats.`;
-    }
-
-    if (monthlySpend <= 10) {
-      reason = "Minimal spend, no optimization needed.";
     }
 
     if (!correctPricePerSeat) {
@@ -237,15 +264,35 @@ export function generateAudit(tools: ToolInput[]): Recommendation[] {
   }
 
   const totalSpend = tools.reduce((sum, t) => sum + t.monthlySpend, 0);
-  if (totalSpend > 1000) {
+  const totalOptimized = recommendations
+    .filter(
+      (r) =>
+        r.tool !== "🏢 Enterprise Opportunity" &&
+        r.tool !== "💡 Consolidation Suggestion",
+    )
+    .reduce((sum, r) => sum + r.optimizedCost, 0);
+
+  const totalSavingsFromOptimizations = totalSpend - totalOptimized;
+  const savingsPercentage =
+    totalSpend > 0 ? (totalSavingsFromOptimizations / totalSpend) * 100 : 0;
+
+  if (
+    totalSpend > 1000 &&
+    !hasEnterpriseRecommendation &&
+    savingsPercentage < 20
+  ) {
+    const enterpriseDiscount = 0.85;
+    const optimizedTotal = Math.round(totalSpend * enterpriseDiscount);
+    const potentialSavings = totalSpend - optimizedTotal;
+
     recommendations.push({
       tool: "🏢 Enterprise Opportunity",
       currentPlan: "Individual subscriptions",
       recommendedPlan: "Enterprise agreement",
       currentCost: totalSpend,
-      optimizedCost: Math.round(totalSpend * 0.7),
-      savings: Math.round(totalSpend * 0.3),
-      reason: `Total spend of $${totalSpend}/month qualifies for enterprise discounts. Contact sales for custom pricing.`,
+      optimizedCost: optimizedTotal,
+      savings: potentialSavings,
+      reason: `Total spend of $${totalSpend}/month may qualify for enterprise discounts. Contact sales for custom pricing to potentially save $${potentialSavings}/month or more.`,
     });
   }
 
